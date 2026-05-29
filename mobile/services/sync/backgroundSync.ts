@@ -84,7 +84,7 @@ class BackgroundSyncService {
     }
 
     const wallet = useAuthStore.getState().wallet;
-    if (!wallet?.address) {
+    if (!wallet?.publicKey) {
       console.log('[SyncService] No wallet connected, skipping sync');
       return;
     }
@@ -94,15 +94,15 @@ class BackgroundSyncService {
 
     try {
       if (options.syncGroups !== false) {
-        await this.syncGroups(wallet.address);
+        await this.syncGroups(wallet.publicKey);
       }
 
       if (options.syncTransactions !== false) {
-        await this.syncTransactions(wallet.address);
+        await this.syncTransactions(wallet.publicKey);
       }
 
       if (options.syncNotifications !== false) {
-        await this.syncNotifications(wallet.address);
+        await this.syncNotifications(wallet.publicKey);
       }
 
       this.lastSyncTime = Date.now();
