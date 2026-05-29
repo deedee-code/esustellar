@@ -12,12 +12,14 @@ interface Props {
 }
 
 export function EmptyState({ icon, illustration, title, message, actionLabel, onAction }: Props) {
-  // Support both icon prop and illustration type
-  const displayIcon = icon || (illustration ? getIllustration(illustration).emoji : '📦');
+  const selected = illustration ? getIllustration(illustration) : getIllustration('default');
+  const useFallbackIcon = Boolean(icon);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{displayIcon}</Text>
+      <View style={styles.illustration}>
+        {useFallbackIcon ? <Text style={styles.icon}>{icon}</Text> : selected.render()}
+      </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionLabel && (
@@ -31,7 +33,8 @@ export function EmptyState({ icon, illustration, title, message, actionLabel, on
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  icon: { fontSize: 48, marginBottom: 12 },
+  illustration: { marginBottom: 14 },
+  icon: { fontSize: 48 },
   title: { fontSize: 18, fontWeight: '600', color: '#F1F5F9', marginBottom: 8 },
   message: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginBottom: 20 },
   button: {
