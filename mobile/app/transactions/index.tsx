@@ -50,7 +50,6 @@ export default function TransactionHistory() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
@@ -73,7 +72,6 @@ export default function TransactionHistory() {
     } finally {
       setLoading(false);
       setLoadingMore(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -85,13 +83,13 @@ export default function TransactionHistory() {
     () => loadPage(0, { reset: true, showFullLoader: false }),
     [loadPage],
   );
-  const { refreshing, onRefresh } = useRefresh(handleRefresh);
+  const { refreshing: isRefreshing, onRefresh } = useRefresh(handleRefresh);
 
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && !refreshing && hasMore) {
+    if (!loadingMore && !isRefreshing && hasMore) {
       void loadPage(page + 1);
     }
-  }, [loadingMore, refreshing, hasMore, page, loadPage]);
+  }, [loadingMore, isRefreshing, hasMore, page, loadPage]);
 
   const handleBack = useCallback(() => {
     router.back();
@@ -125,7 +123,7 @@ export default function TransactionHistory() {
   const listEmptyComponent = useMemo(
     () => (
       <EmptyState
-        icon="📭"
+        illustration="transactions"
         title="No transactions yet"
         message="Your contributions and payouts will appear here."
       />
@@ -156,7 +154,7 @@ export default function TransactionHistory() {
           ItemSeparatorComponent={ItemSeparator}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isRefreshing}
               onRefresh={handleRefresh}
               tintColor="#6366F1"
             />

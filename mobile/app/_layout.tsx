@@ -55,6 +55,18 @@ function RootLayoutContent() {
   const { colors } = useTheme();
   const { t } = useTranslation();
 
+  const withTimeout = useCallback(<T,>(promise: Promise<T>, label: string, timeoutMs = 3000) => {
+    return Promise.race<T>([
+      promise,
+      new Promise<T>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          clearTimeout(timeoutId);
+          reject(new Error(`${label} timed out`));
+        }, timeoutMs);
+      }),
+    ]);
+  }, []);
+
   const unlockApp = useCallback(async () => {
     const biometricEnabled =
       (await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY)) === 'true';
@@ -138,23 +150,36 @@ function RootLayoutContent() {
     let active = true;
 
     const initialize = async () => {
-      await loadLanguage();
-      logger.info('RootLayout', 'App initializing');
+      try {
+        await withTimeout(loadLanguage(), 'Language initialization');
+        logger.info('RootLayout', 'App initializing');
 
-      registerBackgroundSyncScheduler().catch((err) =>
-        logger.warn('RootLayout', 'Background sync registration failed', err),
-      );
+        registerBackgroundSyncScheduler().catch((err) =>
+          logger.warn('RootLayout', 'Background sync registration failed', err),
+        );
 
-      const onboardingComplete = await AsyncStorage.getItem(ONBOARDING_KEY);
+        const onboardingComplete = await withTimeout(
+          AsyncStorage.getItem(ONBOARDING_KEY),
+          'Onboarding check',
+        );
 
-      if (!active) {
-        return;
+        if (!active) {
+          return;
+        }
+
+        router.replace(
+          onboardingComplete === 'true' ? '/wallet/connect' : '/onboarding',
+        );
+      } catch (error) {
+        logger.warn('RootLayout', 'Startup bootstrap failed; continuing', error);
+        if (active) {
+          router.replace('/onboarding');
+        }
+      } finally {
+        if (active) {
+          setChecking(false);
+        }
       }
-
-      router.replace(
-        onboardingComplete === 'true' ? '/wallet/connect' : '/onboarding',
-      );
-      setChecking(false);
     };
 
     void initialize();
@@ -281,9 +306,9 @@ function RootLayoutContent() {
         return false;
       }}
     >
-      <Slot />
-
       <AnnouncementBanner />
+
+      <Slot />
       <NotificationBanner
         body={banner?.body}
         title={banner?.title ?? ''}

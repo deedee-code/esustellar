@@ -8,10 +8,14 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { EmptyState } from '../../components/ui';
+import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../utils/formatDate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -138,17 +142,22 @@ function ReferralRow({ item }: { item: Referral }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-interface ReferralsScreenProps {
-  /** Pass the active wallet's Stellar public key */
-  publicKey: string;
-}
-
-export default function ReferralsScreen({ publicKey }: ReferralsScreenProps) {
+export default function ReferralsScreen() {
+  const router = useRouter();
+  const wallet = useAuthStore((state) => state.wallet);
+  const publicKey = wallet?.publicKey ?? '';
   const [code, setCode] = useState<string>('');
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!publicKey) {
+      setCode('');
+      setReferrals([]);
+      setLoading(false);
+      return;
+    }
+
     async function init() {
       const [resolvedCode, resolvedReferrals] = await Promise.all([
         getOrCreateReferralCode(publicKey),
@@ -181,10 +190,41 @@ export default function ReferralsScreen({ publicKey }: ReferralsScreenProps) {
     });
   }, [code]);
 
+  const header = (
+    <SafeAreaView style={styles.safeTop}>
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>Referrals</Text>
+        <View style={styles.backButton} />
+      </View>
+    </SafeAreaView>
+  );
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={styles.screen}>
+        {header}
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+        </View>
+      </View>
+    );
+  }
+
+  if (!publicKey) {
+    return (
+      <View style={styles.screen}>
+        {header}
+        <EmptyState
+          tone="light"
+          illustration="default"
+          title="Connect a wallet"
+          message="Referral tracking is tied to your active Stellar wallet."
+          actionLabel="Go to wallet"
+          onAction={() => router.push('/wallet/connect')}
+        />
       </View>
     );
   }
@@ -197,6 +237,7 @@ export default function ReferralsScreen({ publicKey }: ReferralsScreenProps) {
       keyExtractor={(item: Referral) => item.id}
       ListHeaderComponent={
         <>
+          {header}
           <Text style={styles.heading}>Invite & earn</Text>
           <Text style={styles.subheading}>
             Earn 2 XLM for every friend who joins and makes their first contribution.
@@ -223,8 +264,18 @@ export default function ReferralsScreen({ publicKey }: ReferralsScreenProps) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { paddingHorizontal: 20, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  safeTop: { backgroundColor: '#F8FAFC' },
+  navBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  navTitle: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
   heading: { fontSize: 24, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
   subheading: { fontSize: 14, color: '#64748B', lineHeight: 20, marginBottom: 20 },

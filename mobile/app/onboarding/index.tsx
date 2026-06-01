@@ -141,22 +141,39 @@ export default function OnboardingScreen() {
           {isLastStep ? 'Get Started' : 'Next'}
         </Text>
       </Pressable>
+      
+      {isLastStep && (
+      <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/wallet/recovery')}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>Recover existing wallet</Text>
+        </Pressable>
+      )}
 
       {isLastStep && (
-        <Pressable
-          accessibilityRole="link"
-          onPress={() => router.push('/legal/terms')}
-          style={styles.termsLink}
-        >
-          <Text style={styles.termsLinkText}>
-            By continuing, you agree to our Terms of Service
-          </Text>
-        </Pressable>
+        <View style={styles.legalLinks}>
+          <Text style={styles.legalText}>By continuing, you agree to our </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/legal/terms')}
+          >
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </Pressable>
+          <Text style={styles.legalText}> and </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/legal/privacy')}
+          >
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </Pressable>
+        </View>
       )}
 
       <Modal
         animationType="slide"
-        onRequestClose={() => setShowNotificationPrompt(false)}
+        onRequestClose={handleSkipNotifications}
         transparent
         visible={showNotificationPrompt}
       >
@@ -172,6 +189,7 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               disabled={submitting}
               onPress={handleAllowNotifications}
+              testID="notifications-allow"
               style={[
                 styles.primaryButton,
                 submitting ? styles.buttonDisabled : null,
@@ -184,6 +202,7 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               disabled={submitting}
               onPress={handleSkipNotifications}
+              testID="notifications-skip"
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonText}>Skip for now</Text>
@@ -280,11 +299,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  termsLink: {
+  legalLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
   },
-  termsLinkText: {
+  legalText: {
+    color: '#64748B',
+    fontSize: 13,
+  },
+  legalLink: {
     color: '#818CF8',
     fontSize: 13,
     textDecorationLine: 'underline',
