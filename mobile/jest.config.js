@@ -1,7 +1,11 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
-  testMatch: ['<rootDir>/__tests__/**/*.{test,spec}.{ts,tsx}'],
+  testMatch: [
+    '<rootDir>/__tests__/**/*.{test,spec}.{ts,tsx}',
+    '<rootDir>/services/**/*.test.{ts,tsx}',
+    '<rootDir>/components/**/*.test.{ts,tsx}',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
