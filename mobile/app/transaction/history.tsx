@@ -88,11 +88,6 @@ export default function TransactionHistoryScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('All');
   const [data, setData] = useState(MOCK_TRANSACTIONS);
 
-  const { refreshing, onRefresh } = useRefresh(async () => {
-    await new Promise((r) => setTimeout(r, 800));
-    setData([...MOCK_TRANSACTIONS]);
-  });
-
   const counts = useMemo<Record<TabKey, number>>(
     () => ({
       All: data.length,

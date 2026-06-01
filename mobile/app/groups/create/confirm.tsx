@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { triggerHapticFeedback } from "../../utils/haptics";
+import { triggerHapticFeedback } from "../../../utils/haptics";
 
 export default function ConfirmGroupScreen() {
   const router = useRouter();

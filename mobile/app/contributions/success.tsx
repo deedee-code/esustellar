@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { SafeAreaView, ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, Pressable, StyleSheet, I18nManager } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { triggerHapticFeedback } from '../../utils/haptics';
 import { Button } from '../../components/ui/Button';
