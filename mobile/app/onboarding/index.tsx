@@ -141,6 +141,16 @@ export default function OnboardingScreen() {
           {isLastStep ? 'Get Started' : 'Next'}
         </Text>
       </Pressable>
+      
+      {isLastStep && (
+      <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/wallet/recovery')}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>Recover existing wallet</Text>
+        </Pressable>
+      )}
 
       {isLastStep && (
         <View style={styles.legalLinks}>
