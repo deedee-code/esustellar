@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Share, SafeAreaView, Pressable, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Share, SafeAreaView, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MemberAvatarStack } from '../../components/groups/MemberAvatarStack';
@@ -10,6 +10,8 @@ import { Card } from '../../components/ui/Card';
 import { Divider } from '../../components/ui/Divider';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { useRefresh } from '../../hooks/useRefresh';
+import { useAuthStore } from '../../store/authStore';
+import { useContributeMutation, usePayoutMutation } from '../../services/optimisticUpdates';
 
 interface Member {
   address: string;
@@ -144,12 +146,34 @@ function LazyTabContent({
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const wallet = useAuthStore((state) => state.wallet);
+  const userAddress = wallet?.publicKey ?? '';
   const [group, setGroup] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('Members');
   // Track which tabs have been visited — only fetch/render on first visit
   const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(new Set(['Members']));
   const [tabLoading, setTabLoading] = useState(false);
+
+  const contributeMutation = useContributeMutation(groupId ?? '', userAddress, {
+    onSuccess: (txHash) => {
+      Alert.alert('Contribution sent', 'Your contribution is confirmed.', [
+        { text: 'OK', onPress: () => router.push({ pathname: '/contributions/success', params: { groupName: group?.name, amount: `${group?.contributionAmount} XLM`, txHash } }) },
+      ]);
+    },
+    onError: (error) => {
+      Alert.alert('Contribution failed', error.message);
+    },
+  });
+
+  const payoutMutation = usePayoutMutation(groupId ?? '', userAddress, {
+    onSuccess: () => {
+      Alert.alert('Payout requested', 'Your payout request is being processed.');
+    },
+    onError: (error) => {
+      Alert.alert('Payout failed', error.message);
+    },
+  });
 
   useEffect(() => {
     const mockGroup: GroupData = {
@@ -338,12 +362,33 @@ export default function GroupDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={[styles.actionButton, styles.primaryButton]}>
-            <Text style={styles.primaryButtonText}>Make Contribution</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.primaryButton, contributeMutation.isPending && styles.buttonDisabled]}
+            onPress={() => {
+              if (!group.contributionAmount) return;
+              contributeMutation.mutate(group.contributionAmount);
+            }}
+            disabled={contributeMutation.isPending || payoutMutation.isPending}
+            accessibilityLabel="Make Contribution"
+          >
+            {contributeMutation.isPending ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Make Contribution</Text>
+            )}
           </TouchableOpacity>
           {group.isCreator && (
-            <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]}>
-              <Text style={styles.secondaryButtonText}>Manage Group</Text>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.secondaryButton, payoutMutation.isPending && styles.buttonDisabled]}
+              onPress={() => payoutMutation.mutate()}
+              disabled={contributeMutation.isPending || payoutMutation.isPending}
+              accessibilityLabel="Request Payout"
+            >
+              {payoutMutation.isPending ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.secondaryButtonText}>Request Payout</Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -405,4 +450,5 @@ const styles = StyleSheet.create({
   secondaryButton: { backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155' },
   primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   secondaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonDisabled: { opacity: 0.6 },
 });

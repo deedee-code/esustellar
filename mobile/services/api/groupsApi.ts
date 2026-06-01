@@ -346,6 +346,65 @@ class GroupsApiService {
   }
 
   /**
+   * Submit a contribution to a group
+   */
+  async contribute(
+    groupId: string,
+    userAddress: string,
+    amount: number,
+  ): Promise<ApiResponse<{ txHash: string; groupId: string; amount: number; timestamp: string }>> {
+    try {
+      logger.debug('GroupsApi', 'Submitting contribution', { groupId, amount });
+
+      // Mock API call — replace with Stellar transaction submission
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      return {
+        success: true,
+        data: {
+          txHash: 'mock_tx_' + Date.now(),
+          groupId,
+          amount,
+          timestamp: new Date().toISOString(),
+        },
+        message: 'Contribution submitted successfully',
+      };
+    } catch (error) {
+      logger.error('GroupsApi', 'Failed to submit contribution', error);
+      return { success: false, error: 'Failed to submit contribution' };
+    }
+  }
+
+  /**
+   * Request a payout from a group
+   */
+  async requestPayout(
+    groupId: string,
+    userAddress: string,
+  ): Promise<ApiResponse<{ txHash: string; groupId: string; amount: number; timestamp: string }>> {
+    try {
+      logger.debug('GroupsApi', 'Requesting payout', { groupId });
+
+      // Mock API call — replace with Stellar payout transaction
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      return {
+        success: true,
+        data: {
+          txHash: 'mock_payout_tx_' + Date.now(),
+          groupId,
+          amount: 0, // Server determines actual payout amount
+          timestamp: new Date().toISOString(),
+        },
+        message: 'Payout requested successfully',
+      };
+    } catch (error) {
+      logger.error('GroupsApi', 'Failed to request payout', error);
+      return { success: false, error: 'Failed to request payout' };
+    }
+  }
+
+  /**
    * Search for public groups
    */
   async searchPublicGroups(query: string): Promise<ApiResponse<Group[]>> {

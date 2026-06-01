@@ -362,3 +362,163 @@ export function useUpdateGroupSettingsMutation(userAddress: string, options?: Us
     },
   });
 }
+
+// ─── Transaction types ────────────────────────────────────────────────────────
+
+export interface OptimisticTransaction {
+  id: string;
+  type: 'contribution' | 'payout';
+  groupId: string;
+  amount: number;
+  timestamp: string;
+  status: 'pending' | 'confirmed' | 'failed';
+  txHash?: string;
+}
+
+interface UseContributeOptions {
+  onSuccess?: (txHash: string) => void;
+  onError?: (error: Error) => void;
+}
+
+/**
+ * Hook for submitting a group contribution with optimistic UI update.
+ * Immediately marks the contribution as "pending" in the transaction cache,
+ * then confirms or rolls back based on the API response.
+ */
+export function useContributeMutation(
+  groupId: string,
+  userAddress: string,
+  options?: UseContributeOptions,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (amount: number) => groupsApi.contribute(groupId, userAddress, amount),
+
+    onMutate: async (amount: number) => {
+      const txKey = queryKeys.transactions.group(groupId);
+      await queryClient.cancelQueries({ queryKey: txKey });
+
+      const previousTxData = queryClient.getQueryData<OptimisticTransaction[]>(txKey);
+
+      const optimisticTx: OptimisticTransaction = {
+        id: `pending_${Date.now()}`,
+        type: 'contribution',
+        groupId,
+        amount,
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      queryClient.setQueryData<OptimisticTransaction[]>(txKey, (prev) =>
+        [optimisticTx, ...(prev ?? [])],
+      );
+
+      return { previousTxData, optimisticId: optimisticTx.id };
+    },
+
+    onError: (error, _amount, context) => {
+      if (context?.previousTxData !== undefined) {
+        queryClient.setQueryData(queryKeys.transactions.group(groupId), context.previousTxData);
+      }
+      options?.onError?.(error);
+    },
+
+    onSuccess: (result, _amount, context) => {
+      if (!result.success) {
+        if (context?.previousTxData !== undefined) {
+          queryClient.setQueryData(queryKeys.transactions.group(groupId), context.previousTxData);
+        }
+        options?.onError?.(new Error(result.error || 'Contribution failed'));
+        return;
+      }
+
+      // Promote optimistic entry to confirmed with the real txHash
+      queryClient.setQueryData<OptimisticTransaction[]>(
+        queryKeys.transactions.group(groupId),
+        (prev) =>
+          (prev ?? []).map((tx) =>
+            tx.id === context?.optimisticId
+              ? { ...tx, status: 'confirmed', txHash: result.data?.txHash }
+              : tx,
+          ),
+      );
+
+      // Invalidate group and transaction caches to sync with server state
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.user(userAddress) });
+
+      options?.onSuccess?.(result.data?.txHash ?? '');
+    },
+  });
+}
+
+/**
+ * Hook for requesting a group payout with optimistic UI update.
+ * Immediately reflects the payout request in the cache while awaiting confirmation.
+ */
+export function usePayoutMutation(
+  groupId: string,
+  userAddress: string,
+  options?: UseContributeOptions,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => groupsApi.requestPayout(groupId, userAddress),
+
+    onMutate: async () => {
+      const txKey = queryKeys.transactions.group(groupId);
+      await queryClient.cancelQueries({ queryKey: txKey });
+
+      const previousTxData = queryClient.getQueryData<OptimisticTransaction[]>(txKey);
+
+      const optimisticTx: OptimisticTransaction = {
+        id: `pending_payout_${Date.now()}`,
+        type: 'payout',
+        groupId,
+        amount: 0,
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      queryClient.setQueryData<OptimisticTransaction[]>(txKey, (prev) =>
+        [optimisticTx, ...(prev ?? [])],
+      );
+
+      return { previousTxData, optimisticId: optimisticTx.id };
+    },
+
+    onError: (error, _vars, context) => {
+      if (context?.previousTxData !== undefined) {
+        queryClient.setQueryData(queryKeys.transactions.group(groupId), context.previousTxData);
+      }
+      options?.onError?.(error);
+    },
+
+    onSuccess: (result, _vars, context) => {
+      if (!result.success) {
+        if (context?.previousTxData !== undefined) {
+          queryClient.setQueryData(queryKeys.transactions.group(groupId), context.previousTxData);
+        }
+        options?.onError?.(new Error(result.error || 'Payout request failed'));
+        return;
+      }
+
+      queryClient.setQueryData<OptimisticTransaction[]>(
+        queryKeys.transactions.group(groupId),
+        (prev) =>
+          (prev ?? []).map((tx) =>
+            tx.id === context?.optimisticId
+              ? { ...tx, status: 'confirmed', txHash: result.data?.txHash, amount: result.data?.amount ?? 0 }
+              : tx,
+          ),
+      );
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.user(userAddress) });
+
+      options?.onSuccess?.(result.data?.txHash ?? '');
+    },
+  });
+}
