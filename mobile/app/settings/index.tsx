@@ -344,6 +344,24 @@ export default function SettingsScreen() {
           </Button>
         </View>
 
+        {/* Notifications */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Notifications
+          </Text>
+          <Text style={[styles.helperText, { color: colors.subtext }]}>
+            Configure quiet hours and Do Not Disturb.
+          </Text>
+          <Button onPress={() => router.push('/settings/notifications')}>
+            Notification Settings
+          </Button>
+        </View>
+
         {/* Appearance */}
         <View
           style={[
