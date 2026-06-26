@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useRefresh } from '../../hooks/useRefresh';
@@ -54,8 +55,8 @@ const HomeHeader = React.memo(() => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.accountInfo}
-          accessibilityLabel="Switch wallet"
-          accessibilityRole="button"
+          aria-label="Switch wallet"
+          role="button"
           onPress={() => setSwitcherVisible(true)}
         >
           <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
@@ -64,8 +65,8 @@ const HomeHeader = React.memo(() => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          accessibilityLabel={t('home.notifications')}
-          accessibilityRole="button"
+          aria-label={t('home.notifications')}
+          role="button"
           onPress={() => {
             triggerHapticFeedback.selection();
             router.push('/notifications');
@@ -96,6 +97,8 @@ export default function HomeScreen() {
   const invalidateTransactions = useInvalidateTransactions();
   const invalidateNotifications = useInvalidateNotifications();
 
+  const [showTutorial, setShowTutorial] = useState(false);
+
   useEffect(() => {
     if (wallet) return;
 
@@ -112,9 +115,22 @@ export default function HomeScreen() {
     };
   }, [wallet, setWallet]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const complete = await AsyncStorage.getItem('tutorialComplete');
+        if (complete !== 'true') {
+          setShowTutorial(true);
+        }
+      } catch (e) {
+        logger.error('HomeScreen', 'Failed to read tutorial status', e as Error);
+      }
+    })();
+  }, []);
+
   const fetchData = useMemo(
     () => async () => {
-      logger.info('HomeScreen', 'Refreshing home data');
+      logger.info('Refreshing home data', { component: 'HomeScreen' });
       await Promise.all([
         invalidateGroups(),
         invalidateTransactions(),
@@ -212,26 +228,31 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16 },
+  content: { padding: 20 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   accountInfo: {
     flex: 1,
   },
-  greeting: { fontSize: 22, fontWeight: '700' },
-  address: { fontSize: 13, marginTop: 2 },
-  switchHint: { fontSize: 12, marginTop: 4 },
-  bell: { padding: 8 },
-  bellIcon: { fontSize: 22 },
+  greeting: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  address: { fontSize: 14, fontWeight: '500', opacity: 0.9 },
+  switchHint: { fontSize: 12, marginTop: 6, opacity: 0.7 },
+  bell: { padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 20 },
+  bellIcon: { fontSize: 20 },
   section: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 3,
   },
   sectionLabel: { fontSize: 13, marginBottom: 4 },
   sectionValue: { fontSize: 24, fontWeight: '700' },
